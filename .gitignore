@@ -29,3 +29,7 @@ build/
 # Environment files
 .env
 .env.local
+
+# Backend
+backend/venv/
+backend/certs/
