@@ -12,20 +12,21 @@ function drawSpeedometerIcon(percentage) {
   const ctx = canvas.getContext("2d");
 
   const cx = size / 2;
-  const cy = size / 2 + 10;
-  const radius = 48;
+  const cy = size / 2 + 14;
+  const radius = 58;
+  const arcWidth = 14;
 
   // Background circle
   ctx.beginPath();
-  ctx.arc(cx, cy, radius, 0, Math.PI * 2);
+  ctx.arc(cx, cy, radius + 2, 0, Math.PI * 2);
   ctx.fillStyle = "#1a1a2e";
   ctx.fill();
 
   // Arc track (gray)
   ctx.beginPath();
-  ctx.arc(cx, cy, radius - 8, Math.PI, Math.PI * 2);
+  ctx.arc(cx, cy, radius - arcWidth / 2, Math.PI, Math.PI * 2);
   ctx.strokeStyle = "#444";
-  ctx.lineWidth = 10;
+  ctx.lineWidth = arcWidth;
   ctx.lineCap = "round";
   ctx.stroke();
 
@@ -38,16 +39,18 @@ function drawSpeedometerIcon(percentage) {
   else if (percentage < 66) arcColor = "#f59e0b";       // amber
   else arcColor = "#ef4444";                            // red
 
-  ctx.beginPath();
-  ctx.arc(cx, cy, radius - 8, startAngle, endAngle);
-  ctx.strokeStyle = arcColor;
-  ctx.lineWidth = 10;
-  ctx.lineCap = "round";
-  ctx.stroke();
+  if (fraction > 0.005) {
+    ctx.beginPath();
+    ctx.arc(cx, cy, radius - arcWidth / 2, startAngle, endAngle);
+    ctx.strokeStyle = arcColor;
+    ctx.lineWidth = arcWidth;
+    ctx.lineCap = "round";
+    ctx.stroke();
+  }
 
   // Needle
   const needleAngle = Math.PI + fraction * Math.PI;
-  const needleLength = radius - 14;
+  const needleLength = radius - arcWidth - 4;
   ctx.beginPath();
   ctx.moveTo(cx, cy);
   ctx.lineTo(
@@ -55,22 +58,22 @@ function drawSpeedometerIcon(percentage) {
     cy + Math.sin(needleAngle) * needleLength
   );
   ctx.strokeStyle = "#ffffff";
-  ctx.lineWidth = 3;
+  ctx.lineWidth = 4;
   ctx.lineCap = "round";
   ctx.stroke();
 
   // Center dot
   ctx.beginPath();
-  ctx.arc(cx, cy, 5, 0, Math.PI * 2);
+  ctx.arc(cx, cy, 6, 0, Math.PI * 2);
   ctx.fillStyle = "#ffffff";
   ctx.fill();
 
   // Percentage label
   ctx.fillStyle = "#ffffff";
-  ctx.font = "bold 20px sans-serif";
+  ctx.font = "bold 26px sans-serif";
   ctx.textAlign = "center";
   ctx.textBaseline = "middle";
-  ctx.fillText(`${Math.round(percentage)}%`, cx, cy - radius + 28);
+  ctx.fillText(`${Math.round(percentage)}%`, cx, cy + 16);
 
   return ctx.getImageData(0, 0, size, size);
 }

@@ -34,3 +34,8 @@ build/
 # Backend
 backend/venv/
 backend/certs/
+.venv/
+
+# Test page
+test-page/.next/
+test-page/node_modules/

@@ -138,7 +138,6 @@ async function runScan() {
   removeHighlights();
 
   const textNodes = extractSentences();
-  console.log(`[AI Detector] Found ${textNodes.length} text nodes`);
 
   // Build a flat list of { node, sentence } pairs
   const pairs = [];
@@ -149,13 +148,7 @@ async function runScan() {
     }
   }
 
-  console.log(`[AI Detector] Built ${pairs.length} sentence pairs`);
-  if (pairs.length > 0) {
-    console.log("[AI Detector] First 3 sentences:", pairs.slice(0, 3).map(p => p.sentence));
-  }
-
   if (pairs.length === 0) {
-    console.warn("[AI Detector] No sentences found on page — nothing to scan.");
     chrome.runtime.sendMessage({
       type: "SCAN_COMPLETE",
       percentage: 0,
@@ -182,11 +175,6 @@ async function runScan() {
   }
 
   const data = await response.json();
-  console.log(`[AI Detector] Backend response — overall: ${data.overall_ai_percentage}%, threshold: ${data.threshold_used}`);
-  console.log("[AI Detector] Per-sentence results:");
-  data.results.forEach((r, i) => {
-    console.log(`  [${i}] prob=${r.ai_probability} is_ai=${r.is_ai} "${r.text.slice(0, 60)}..."`);
-  });
 
   // Apply highlights: iterate results and match back to nodes
   data.results.forEach((result, i) => {
@@ -209,7 +197,6 @@ async function runScan() {
 // Message listener
 
 chrome.runtime.onMessage.addListener((message) => {
-  console.log("[AI Detector] Content script received message:", message.type);
   if (message.type === "RUN_SCAN") {
     runScan();
   }
