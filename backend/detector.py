@@ -15,8 +15,6 @@ def get_classifier():
             "text-classification",
             model=MODEL_NAME,
             device=device,
-            truncation=True,
-            max_length=512
         )
     return _classifier
 
@@ -38,7 +36,7 @@ def score_sentences(sentences: list[str]) -> list[dict]:
             results.append({"text": sentence, "ai_probability": 0.0})
             continue
 
-        prediction = classifier(sentence)[0]
+        prediction = classifier(sentence, truncation=True, max_length=512)[0]
         # LABEL_1 = AI-generated in this model
         if prediction["label"] == "LABEL_1":
             ai_prob = prediction["score"]
