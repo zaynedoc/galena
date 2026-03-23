@@ -17,7 +17,7 @@ app.add_middleware(
     allow_headers=["Content-Type"],
 )
 
-AI_THRESHOLD = float(os.getenv("AI_THRESHOLD", "0.75"))
+AI_THRESHOLD = float(os.getenv("AI_THRESHOLD", "0.9"))
 
 
 class DetectRequest(BaseModel):

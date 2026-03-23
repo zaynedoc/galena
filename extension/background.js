@@ -68,13 +68,6 @@ function drawSpeedometerIcon(percentage) {
   ctx.fillStyle = "#ffffff";
   ctx.fill();
 
-  // Percentage label
-  ctx.fillStyle = "#ffffff";
-  ctx.font = "bold 26px sans-serif";
-  ctx.textAlign = "center";
-  ctx.textBaseline = "middle";
-  ctx.fillText(`${Math.round(percentage)}%`, cx, cy + 16);
-
   return ctx.getImageData(0, 0, size, size);
 }
 

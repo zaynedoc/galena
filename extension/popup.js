@@ -49,13 +49,6 @@ function drawGauge(canvas, percentage) {
   ctx.fillStyle = "#f8fafc";
   ctx.fill();
 
-  // Tick labels
-  ctx.fillStyle = "#64748b";
-  ctx.font = "10px system-ui";
-  ctx.textAlign = "center";
-  ctx.fillText("0%",   cx - radius + 4,  cy - 4);
-  ctx.fillText("50%",  cx,               cy - radius - 6);
-  ctx.fillText("100%", cx + radius - 10, cy - 4);
 }
 
 function probClass(p) {

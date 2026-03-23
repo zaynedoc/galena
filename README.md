@@ -1,4 +1,4 @@
-# Galena — AI Text Detector
+# <img src="test-page\app\favicon.ico" alt="Galena logo" width="20" /> Galena, AI Text Detector
 
 A Chrome extension that detects AI-generated text on any webpage. Highlights flagged sentences in yellow and shows an overall confidence score via a speedometer gauge, all while running locally on your machine!
 
@@ -77,6 +77,16 @@ First launch downloads the model (~500 MB). Subsequent starts are instant.
 - Yellow highlights appear on AI-flagged sentences
 - The popup shows a speedometer gauge and sentence breakdown
 
+<br />
+<img src="test-page\public\screenshot.png" alt="Galena logo" width="720" />
+
+Note: test page for testing detection analysis, found in `./test-page` dir
+
+<br />
+<img src="test-page\public\screenshot2.png" alt="Galena logo" width="720" />
+
+Disclaimer: AI detection is prone to false-positives, or I'm giving Wikipedia editors too much credit
+
 ## Configuration
 
 Edit `backend/.env` (copy from `.env.example` if missing):
@@ -108,8 +118,15 @@ galena/
 
 ## Model
 
-Default: [`Hello-SimpleAI/chatgpt-detector-roberta`](https://huggingface.co/Hello-SimpleAI/chatgpt-detector-roberta) — a RoBERTa-base model fine-tuned on ChatGPT vs. human text (~500 MB).
+Default: [`andreas122001/roberta-academic-detector`](https://huggingface.co/andreas122001/roberta-academic-detector), a RoBERTa-base model fine-tuned on GPT-3.5/4 academic text (~500 MB).
+
+## Disclaimer
+
+- Detection is probabilistic, not definitive. False positives and false negatives can occur.
+- Do not use this tool as sole evidence for academic, legal, hiring, or disciplinary decisions.
+- Model behavior can vary by domain, writing style, and prompt strategy.
+- This project uses a third-party Hugging Face model; follow that model card and license terms when redistributing or modifying.
 
 ## License
 
-Apache 2.0 — see [LICENSE](LICENSE) for details.
+Apache 2.0. See [LICENSE](LICENSE) for details.

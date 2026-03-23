@@ -4,6 +4,35 @@
 
 const BACKEND_URL = "https://127.0.0.1:8000/detect";
 const HIGHLIGHT_CLASS = "ai-detector-highlight";
+const NOISE_CONTAINER_SELECTORS = [
+  "nav",
+  "header",
+  "footer",
+  "aside",
+  "table",
+  "figure",
+  "form",
+  "menu",
+  "[role='navigation']",
+  "[role='menu']",
+  "[role='complementary']",
+  "#toc",
+  ".toc",
+  ".infobox",
+  ".navbox",
+  ".sidebar",
+  ".metadata",
+  ".reference",
+  ".references",
+  ".mw-editsection",
+  ".vector-sticky-header"
+].join(",");
+const BLOCKED_PARENT_TAGS = new Set([
+  "h1", "h2", "h3", "h4", "h5", "h6",
+  "li", "dt", "dd",
+  "th", "td", "caption",
+  "button", "label"
+]);
 const HIGHLIGHT_STYLE = `
   .${HIGHLIGHT_CLASS} {
     background-color: rgba(250, 204, 21, 0.45) !important;
@@ -37,18 +66,63 @@ const HIGHLIGHT_STYLE = `
 
 // Text extraction
 
+function isInsideNoiseContainer(element) {
+  return Boolean(element.closest(NOISE_CONTAINER_SELECTORS));
+}
+
+function getContentRoot() {
+  const candidates = [
+    "article",
+    "main",
+    "[role='main']",
+    "#mw-content-text",
+    ".mw-parser-output",
+    "#content"
+  ];
+
+  for (const selector of candidates) {
+    const el = document.querySelector(selector);
+    if (el) return el;
+  }
+  return document.body;
+}
+
+function isLikelyContentSentence(sentence) {
+  const s = sentence.trim();
+  if (s.length < 35) return false;
+
+  const words = s.split(/\s+/).filter(Boolean);
+  if (words.length < 6) return false;
+
+  // Avoid scoring structural labels and menu fragments.
+  if (!/[.!?]$/.test(s)) return false;
+
+  // Require mostly alphabetic text so IDs/date-like strings are ignored.
+  const alpha = (s.match(/[A-Za-z]/g) || []).length;
+  if (alpha / s.length < 0.6) return false;
+
+  return true;
+}
+
 function extractSentences() {
+  const root = getContentRoot();
   const walker = document.createTreeWalker(
-    document.body,
+    root,
     NodeFilter.SHOW_TEXT,
     {
       acceptNode(node) {
         const parent = node.parentElement;
         if (!parent) return NodeFilter.FILTER_REJECT;
 
-        // Skip invisible, script, style, and form elements
+        // Skip invisible or non-content containers.
         const tag = parent.tagName.toLowerCase();
-        if (["script", "style", "noscript", "textarea", "input", "code", "pre"].includes(tag)) {
+        if (["script", "style", "noscript", "textarea", "input", "code", "pre", "svg"].includes(tag)) {
+          return NodeFilter.FILTER_REJECT;
+        }
+        if (BLOCKED_PARENT_TAGS.has(tag)) {
+          return NodeFilter.FILTER_REJECT;
+        }
+        if (isInsideNoiseContainer(parent)) {
           return NodeFilter.FILTER_REJECT;
         }
         if (parent.offsetParent === null && parent.tagName !== "BODY") {
@@ -74,7 +148,7 @@ function splitIntoSentences(text) {
   return text
     .split(/(?<=[.!?])\s+/)
     .map(s => s.trim())
-    .filter(s => s.length > 15);
+    .filter(isLikelyContentSentence);
 }
 
 // Highlighting

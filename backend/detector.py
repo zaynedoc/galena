@@ -1,7 +1,7 @@
 from transformers import pipeline
 import torch
 
-MODEL_NAME = "Hello-SimpleAI/chatgpt-detector-roberta"
+MODEL_NAME = "andreas122001/roberta-academic-detector"
 
 # Load once at startup — not on every request
 _classifier = None
@@ -37,8 +37,8 @@ def score_sentences(sentences: list[str]) -> list[dict]:
             continue
 
         prediction = classifier(sentence, truncation=True, max_length=512)[0]
-        # LABEL_1 = AI-generated in this model
-        if prediction["label"] == "LABEL_1":
+        # This model uses "machine-generated" / "human-produced" labels
+        if prediction["label"] == "machine-generated":
             ai_prob = prediction["score"]
         else:
             ai_prob = 1.0 - prediction["score"]
