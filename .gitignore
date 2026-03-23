@@ -25,6 +25,7 @@ dist/
 build/
 *.o
 *.exe
+.next/
 
 # Environment files
 .env

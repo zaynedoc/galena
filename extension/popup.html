@@ -4,14 +4,32 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>AI Text Detector</title>
-  <style>
-    body { width: 300px; padding: 16px; background: #0f0f1a; color: #e2e8f0; font-family: system-ui, sans-serif; font-size: 13px; }
-    h1 { font-size: 15px; margin: 0 0 8px; }
-    p { color: #64748b; font-size: 11px; }
-  </style>
+  <link rel="stylesheet" href="popup.css">
 </head>
 <body>
-  <h1>AI Text Detector</h1>
-  <p>Phase 2 stub — full popup coming in Phase 3.</p>
+  <div class="container">
+    <header>
+      <h1>AI Text Detector</h1>
+      <p id="domain" class="domain">—</p>
+    </header>
+
+    <div class="gauge-container">
+      <canvas id="gauge" width="220" height="130"></canvas>
+      <p id="percentage-label" class="pct-label">—%</p>
+      <p id="status-label" class="status-label">Not scanned yet</p>
+    </div>
+
+    <button id="scan-btn" class="scan-btn">Scan this page</button>
+
+    <div id="breakdown" class="breakdown hidden">
+      <h2>Sentence breakdown</h2>
+      <div id="sentence-list" class="sentence-list"></div>
+    </div>
+
+    <footer>
+      <p>All analysis runs locally on your machine.</p>
+    </footer>
+  </div>
+  <script src="popup.js"></script>
 </body>
 </html>

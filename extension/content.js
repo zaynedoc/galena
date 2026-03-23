@@ -95,7 +95,21 @@ function removeHighlights() {
   });
 }
 
-function highlightSentence(textNode, sentence, probability) {
+function highlightSentence(originalNode, sentence, probability) {
+  // The original textNode may have been split by a previous highlight.
+  // Walk the parent's child nodes to find the current text node that contains the sentence.
+  const parent = originalNode.parentNode;
+  if (!parent) return;
+
+  let textNode = null;
+  for (const child of parent.childNodes) {
+    if (child.nodeType === Node.TEXT_NODE && child.textContent.includes(sentence)) {
+      textNode = child;
+      break;
+    }
+  }
+  if (!textNode) return;
+
   const nodeText = textNode.textContent;
   const index = nodeText.indexOf(sentence);
   if (index === -1) return;
@@ -110,7 +124,6 @@ function highlightSentence(textNode, sentence, probability) {
   mark.dataset.aiProb = `AI: ${Math.round(probability * 100)}%`;
   mark.title = `AI probability: ${Math.round(probability * 100)}%`;
 
-  const parent = textNode.parentNode;
   parent.insertBefore(document.createTextNode(before), textNode);
   parent.insertBefore(mark, textNode);
   parent.insertBefore(document.createTextNode(after), textNode);
@@ -120,10 +133,12 @@ function highlightSentence(textNode, sentence, probability) {
 // Main scan
 
 async function runScan() {
+  console.log("[AI Detector] Scan started...");
   injectStyles();
   removeHighlights();
 
   const textNodes = extractSentences();
+  console.log(`[AI Detector] Found ${textNodes.length} text nodes`);
 
   // Build a flat list of { node, sentence } pairs
   const pairs = [];
@@ -134,7 +149,13 @@ async function runScan() {
     }
   }
 
+  console.log(`[AI Detector] Built ${pairs.length} sentence pairs`);
+  if (pairs.length > 0) {
+    console.log("[AI Detector] First 3 sentences:", pairs.slice(0, 3).map(p => p.sentence));
+  }
+
   if (pairs.length === 0) {
+    console.warn("[AI Detector] No sentences found on page — nothing to scan.");
     chrome.runtime.sendMessage({
       type: "SCAN_COMPLETE",
       percentage: 0,
@@ -161,11 +182,20 @@ async function runScan() {
   }
 
   const data = await response.json();
+  console.log(`[AI Detector] Backend response — overall: ${data.overall_ai_percentage}%, threshold: ${data.threshold_used}`);
+  console.log("[AI Detector] Per-sentence results:");
+  data.results.forEach((r, i) => {
+    console.log(`  [${i}] prob=${r.ai_probability} is_ai=${r.is_ai} "${r.text.slice(0, 60)}..."`);
+  });
 
   // Apply highlights: iterate results and match back to nodes
   data.results.forEach((result, i) => {
     if (result.is_ai && pairs[i]) {
-      highlightSentence(pairs[i].node, pairs[i].sentence, result.ai_probability);
+      try {
+        highlightSentence(pairs[i].node, pairs[i].sentence, result.ai_probability);
+      } catch (err) {
+        console.warn(`[AI Detector] Could not highlight sentence ${i}:`, err.message);
+      }
     }
   });
 
@@ -179,7 +209,10 @@ async function runScan() {
 // Message listener
 
 chrome.runtime.onMessage.addListener((message) => {
+  console.log("[AI Detector] Content script received message:", message.type);
   if (message.type === "RUN_SCAN") {
     runScan();
   }
 });
+
+console.log("[AI Detector] Content script loaded on", window.location.href);
