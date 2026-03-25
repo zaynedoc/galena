@@ -49,6 +49,120 @@ h1 { font-size: 15px; font-weight: 600; color: #f8fafc; }
 .scan-btn:hover { background: #2563eb; }
 .scan-btn:disabled { background: #1e3a5f; color: #475569; cursor: not-allowed; }
 
+/* Toggle row */
+.toggle-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: 10px;
+  padding: 6px 0;
+}
+
+.toggle-label {
+  font-size: 12px;
+  font-weight: 600;
+  color: #94a3b8;
+}
+
+.switch {
+  position: relative;
+  width: 36px;
+  height: 20px;
+  flex-shrink: 0;
+}
+
+.switch input {
+  opacity: 0;
+  width: 0;
+  height: 0;
+}
+
+.slider {
+  position: absolute;
+  inset: 0;
+  background: #334155;
+  border-radius: 20px;
+  cursor: pointer;
+  transition: background 0.25s;
+}
+
+.slider::before {
+  content: "";
+  position: absolute;
+  left: 2px;
+  top: 2px;
+  width: 16px;
+  height: 16px;
+  background: #94a3b8;
+  border-radius: 50%;
+  transition: transform 0.25s, background 0.25s;
+}
+
+.switch input:checked + .slider {
+  background: #7c3aed;
+}
+
+.switch input:checked + .slider::before {
+  transform: translateX(16px);
+  background: #f8fafc;
+}
+
+.switch input:disabled + .slider {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+/* API key message */
+.api-key-msg {
+  font-size: 11px;
+  color: #f59e0b;
+  margin-top: 6px;
+  padding: 6px 8px;
+  background: #451a03;
+  border-radius: 6px;
+  text-align: center;
+}
+
+/* AI summary card */
+.ai-summary {
+  margin-top: 12px;
+  padding: 10px 12px;
+  background: #1e1035;
+  border: 1px solid #7c3aed55;
+  border-radius: 8px;
+  font-size: 13px;
+  line-height: 1.5;
+  color: #e2e8f0;
+}
+
+.ai-summary.analyzing {
+  animation: pulse-glow 1.5s ease-in-out infinite;
+}
+
+@keyframes pulse-glow {
+  0%, 100% { border-color: #7c3aed33; box-shadow: 0 0 0 transparent; }
+  50% { border-color: #7c3aed; box-shadow: 0 0 12px #7c3aed44; }
+}
+
+/* Enhanced hue-shifted mode */
+.container.enhanced {
+  background: #1a0f2e;
+  transition: background 0.4s ease;
+}
+
+.container.enhanced .scan-btn {
+  background: #7c3aed;
+}
+
+.container.enhanced .scan-btn:hover {
+  background: #6d28d9;
+}
+
+.container.enhanced .scan-btn:disabled {
+  background: #2e1065;
+  color: #6b21a8;
+}
+
 .breakdown { margin-top: 16px; }
 .breakdown h2 { font-size: 12px; font-weight: 600; color: #94a3b8; margin-bottom: 8px; text-transform: uppercase; letter-spacing: 0.05em; }
 

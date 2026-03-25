@@ -2,7 +2,8 @@
 // Manifest V3 service worker
 // Manages per-tab state and renders the speedometer badge icon
 
-const tabState = {};  // { [tabId]: { percentage, status } }
+const BACKEND_BASE = "https://127.0.0.1:8000";
+const tabState = {};  // { [tabId]: { percentage, status, enhancedToggle, enhancedStatus, ... } }
 
 // Icon rendering
 
@@ -95,6 +96,55 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   if (message.type === "TRIGGER_SCAN") {
     tabState[message.tabId] = { percentage: 0, results: [], status: "scanning" };
     chrome.tabs.sendMessage(message.tabId, { type: "RUN_SCAN" });
+    sendResponse({ ok: true });
+  }
+
+  if (message.type === "SET_ENHANCED_TOGGLE") {
+    const tid = message.tabId;
+    if (tabState[tid]) {
+      tabState[tid].enhancedToggle = message.enabled;
+    } else {
+      tabState[tid] = { percentage: 0, results: [], status: "idle", enhancedToggle: message.enabled };
+    }
+    sendResponse({ ok: true });
+  }
+
+  if (message.type === "TRIGGER_ENHANCED") {
+    const tid = message.tabId;
+    const s = tabState[tid];
+    if (s) {
+      s.enhancedStatus = "scanning";
+      s.summary = null;
+      s.enhancedResults = null;
+      s.enhancedError = null;
+    }
+    // Run the fetch async in the service worker (survives popup close)
+    (async () => {
+      try {
+        const resp = await fetch(`${BACKEND_BASE}/detect-enhanced`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            sentences: message.sentences,
+            overall_ai_percentage: message.percentage
+          })
+        });
+        if (!resp.ok) throw new Error(`Server returned ${resp.status}`);
+        const data = await resp.json();
+        const st = tabState[tid];
+        if (st) {
+          st.enhancedStatus = "done";
+          st.summary = data.summary || "No summary returned.";
+          st.enhancedResults = data.results;
+        }
+      } catch (err) {
+        const st = tabState[tid];
+        if (st) {
+          st.enhancedStatus = "error";
+          st.enhancedError = err.message;
+        }
+      }
+    })();
     sendResponse({ ok: true });
   }
 

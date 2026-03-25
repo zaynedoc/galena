@@ -1,5 +1,7 @@
 // popup.js
 
+const BACKEND_BASE = "https://127.0.0.1:8000";
+
 function drawGauge(canvas, percentage) {
   const ctx = canvas.getContext("2d");
   const w = canvas.width;
@@ -66,10 +68,48 @@ async function init() {
   const scanBtn = document.getElementById("scan-btn");
   const breakdown = document.getElementById("breakdown");
   const sentenceList = document.getElementById("sentence-list");
+  const container = document.querySelector(".container");
+
+  // Enhanced mode elements
+  const enhancedToggle = document.getElementById("enhanced-toggle");
+  const apiKeyMsg = document.getElementById("api-key-msg");
+  const aiSummary = document.getElementById("ai-summary");
+  const aiSummaryText = document.getElementById("ai-summary-text");
+
+  let apiKeyAvailable = false;
 
   try {
     domainEl.textContent = new URL(tab.url).hostname;
   } catch {}
+
+  // Check API key availability
+  try {
+    const resp = await fetch(`${BACKEND_BASE}/api-key-status`);
+    const data = await resp.json();
+    apiKeyAvailable = data.available;
+  } catch {}
+
+  if (apiKeyAvailable) {
+    enhancedToggle.disabled = false;
+    apiKeyMsg.classList.add("hidden");
+  } else {
+    enhancedToggle.disabled = true;
+    enhancedToggle.checked = false;
+    apiKeyMsg.textContent = "AI API key is not present, please input key into .env!";
+    apiKeyMsg.classList.remove("hidden");
+  }
+
+  // Toggle hue-shift on switch change & persist state
+  enhancedToggle.addEventListener("change", () => {
+    chrome.runtime.sendMessage({ type: "SET_ENHANCED_TOGGLE", tabId: tab.id, enabled: enhancedToggle.checked });
+    if (enhancedToggle.checked) {
+      container.classList.add("enhanced");
+    } else {
+      container.classList.remove("enhanced");
+      aiSummary.classList.add("hidden");
+      aiSummary.classList.remove("analyzing");
+    }
+  });
 
   // Load existing state for this tab
   const state = await chrome.runtime.sendMessage({ type: "GET_STATE", tabId: tab.id });
@@ -79,6 +119,32 @@ async function init() {
     pctLabel.textContent = `${state.percentage}%`;
     statusLabel.textContent = "Scan complete";
     renderBreakdown(state.results, breakdown, sentenceList);
+
+    // Restore toggle state
+    if (state.enhancedToggle) {
+      enhancedToggle.checked = true;
+      container.classList.add("enhanced");
+    }
+
+    // Restore or poll enhanced results
+    if (state.enhancedStatus === "done" && state.summary) {
+      aiSummaryText.textContent = state.summary;
+      aiSummary.classList.remove("hidden");
+      aiSummary.classList.remove("analyzing");
+      if (state.enhancedResults) {
+        renderBreakdown(state.enhancedResults, breakdown, sentenceList);
+      }
+    } else if (state.enhancedStatus === "scanning") {
+      // Enhanced scan still running in background — poll for it
+      aiSummaryText.textContent = "Analyzing…";
+      aiSummary.classList.remove("hidden");
+      aiSummary.classList.add("analyzing");
+      pollEnhanced(tab.id, aiSummary, aiSummaryText, breakdown, sentenceList);
+    } else if (state.enhancedStatus === "error") {
+      aiSummaryText.textContent = `Enhanced analysis failed: ${state.enhancedError}`;
+      aiSummary.classList.remove("hidden");
+      aiSummary.classList.remove("analyzing");
+    }
   } else {
     drawGauge(canvas, 0);
     pctLabel.textContent = "—%";
@@ -89,23 +155,65 @@ async function init() {
     scanBtn.textContent = "Scanning…";
     statusLabel.textContent = "Scanning…";
     breakdown.classList.add("hidden");
+    aiSummary.classList.add("hidden");
+    aiSummary.classList.remove("analyzing");
 
     await chrome.runtime.sendMessage({ type: "TRIGGER_SCAN", tabId: tab.id });
 
     // Poll for result
     const poll = setInterval(async () => {
-      const s = await chrome.runtime.sendMessage({ type: "GET_STATE", tabId: tab.id });
-      if (s && s.status === "done") {
-        clearInterval(poll);
-        drawGauge(canvas, s.percentage);
-        pctLabel.textContent = `${s.percentage}%`;
-        statusLabel.textContent = "Scan complete";
-        scanBtn.disabled = false;
-        scanBtn.textContent = "Scan again";
-        renderBreakdown(s.results, breakdown, sentenceList);
+      try {
+        const s = await chrome.runtime.sendMessage({ type: "GET_STATE", tabId: tab.id });
+        if (s && s.status === "done") {
+          clearInterval(poll);
+          drawGauge(canvas, s.percentage);
+          pctLabel.textContent = `${s.percentage}%`;
+          statusLabel.textContent = "Scan complete";
+          scanBtn.disabled = false;
+          scanBtn.textContent = "Scan again";
+          renderBreakdown(s.results, breakdown, sentenceList);
+
+          // If enhanced toggle is ON, fire the second opinion via background
+          if (enhancedToggle.checked && apiKeyAvailable) {
+            aiSummaryText.textContent = "Analyzing…";
+            aiSummary.classList.remove("hidden");
+            aiSummary.classList.add("analyzing");
+            chrome.runtime.sendMessage({
+              type: "TRIGGER_ENHANCED",
+              tabId: tab.id,
+              sentences: s.results.map(r => r.text),
+              percentage: s.percentage
+            });
+            pollEnhanced(tab.id, aiSummary, aiSummaryText, breakdown, sentenceList);
+          }
+        }
+      } catch (err) {
+        console.warn("[AI Detector] Poll error:", err);
       }
     }, 500);
   });
+}
+
+function pollEnhanced(tabId, aiSummary, aiSummaryText, breakdown, sentenceList) {
+  const poll = setInterval(async () => {
+    try {
+      const s = await chrome.runtime.sendMessage({ type: "GET_STATE", tabId });
+      if (s && s.enhancedStatus === "done") {
+        clearInterval(poll);
+        aiSummaryText.textContent = s.summary;
+        aiSummary.classList.remove("analyzing");
+        if (s.enhancedResults && s.enhancedResults.length > 0) {
+          renderBreakdown(s.enhancedResults, breakdown, sentenceList);
+        }
+      } else if (s && s.enhancedStatus === "error") {
+        clearInterval(poll);
+        aiSummaryText.textContent = `Enhanced analysis failed: ${s.enhancedError}`;
+        aiSummary.classList.remove("analyzing");
+      }
+    } catch (err) {
+      console.warn("[AI Detector] Enhanced poll error:", err);
+    }
+  }, 500);
 }
 
 function renderBreakdown(results, breakdown, list) {

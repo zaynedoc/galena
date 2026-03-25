@@ -21,6 +21,19 @@
 
     <button id="scan-btn" class="scan-btn">Scan this page</button>
 
+    <div class="toggle-row" id="enhanced-toggle-row">
+      <label class="toggle-label" for="enhanced-toggle">Second opinion? (AI)</label>
+      <label class="switch">
+        <input type="checkbox" id="enhanced-toggle" disabled>
+        <span class="slider"></span>
+      </label>
+    </div>
+    <p id="api-key-msg" class="api-key-msg hidden"></p>
+
+    <div id="ai-summary" class="ai-summary hidden">
+      <p id="ai-summary-text"></p>
+    </div>
+
     <div id="breakdown" class="breakdown hidden">
       <h2>Sentence breakdown</h2>
       <div id="sentence-list" class="sentence-list"></div>

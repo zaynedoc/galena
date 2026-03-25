@@ -1,6 +1,9 @@
 import os
 import json
+import logging
 from anthropic import Anthropic
+
+logger = logging.getLogger(__name__)
 
 _client = None
 _client_key = None
@@ -47,32 +50,41 @@ Respond with ONLY valid JSON (no markdown fences) in this exact schema:
 {
   "summary": "<your comedic 1-2 sentence summary>",
   "results": [
-    { "text": "<sentence>", "ai_probability": <0.0-1.0>, "is_ai": <true/false> }
+    { "i": <sentence_index>, "p": <0.0-1.0> }
   ],
   "overall_ai_percentage": <0.0-100.0>
 }
 
 Rules:
 - "summary" is your comedic take on how AI-generated the page is.
-- "results" must contain every sentence you received, in the same order.
-- "ai_probability" is your estimated probability (0.0 to 1.0) that the sentence was AI-generated.
-- "is_ai" is true if ai_probability >= 0.75.
-- "overall_ai_percentage" is the percentage of sentences you marked is_ai, 0-100.\
+- "results" must contain one entry per sentence, in the same order. Use the sentence number as "i" (1-based) and your estimated AI probability as "p".
+- "overall_ai_percentage" is the percentage of sentences where p >= 0.75, from 0-100.\
 """
+
+
+MAX_SENTENCES_FOR_LLM = 80
 
 
 def enhanced_detect(sentences: list[str], local_ai_percentage: float) -> dict:
     """
     Send all sentences to the LLM in one call and return the parsed response.
+    Caps at MAX_SENTENCES_FOR_LLM to avoid token overflow.
     Raises on network/parsing errors. Caller should handle.
     """
     client = _get_client()
 
+    # Cap sentences to avoid exceeding token limits on large pages
+    capped = sentences[:MAX_SENTENCES_FOR_LLM]
+    was_capped = len(sentences) > MAX_SENTENCES_FOR_LLM
+
     user_content = (
         f"Local model says {local_ai_percentage:.1f}% of this page is AI-generated.\n\n"
-        f"Sentences ({len(sentences)} total):\n"
     )
-    for i, s in enumerate(sentences, 1):
+    if was_capped:
+        user_content += f"(Showing first {MAX_SENTENCES_FOR_LLM} of {len(sentences)} sentences)\n\n"
+    user_content += f"Sentences ({len(capped)} total):\n"
+
+    for i, s in enumerate(capped, 1):
         user_content += f"{i}. {s}\n"
 
     response = client.messages.create(
@@ -93,4 +105,28 @@ def enhanced_detect(sentences: list[str], local_ai_percentage: float) -> dict:
         raw = raw.rsplit("```", 1)[0]
     raw = raw.strip()
 
-    return json.loads(raw)
+    # Check if the response was truncated (hit max_tokens)
+    if response.stop_reason == "max_tokens":
+        logger.warning("LLM response was truncated (hit max_tokens). Trying to salvage...")
+
+    try:
+        parsed = json.loads(raw)
+    except json.JSONDecodeError as e:
+        logger.error("Failed to parse LLM JSON: %s", e)
+        logger.error("Raw response (first 500 chars): %s", raw[:500])
+        raise
+
+    # Map index-based results back to full sentence objects
+    mapped_results = []
+    for r in parsed.get("results", []):
+        idx = r.get("i", 0) - 1  # convert 1-based to 0-based
+        prob = r.get("p", 0.0)
+        text = capped[idx] if 0 <= idx < len(capped) else f"(sentence {idx+1})"
+        mapped_results.append({
+            "text": text,
+            "ai_probability": prob,
+            "is_ai": prob >= 0.75,
+        })
+
+    parsed["results"] = mapped_results
+    return parsed

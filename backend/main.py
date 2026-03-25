@@ -101,9 +101,13 @@ def detect_enhanced(request: EnhancedDetectRequest):
     if not request.sentences:
         return EnhancedDetectResponse(summary="Nothing to analyze!", results=[], overall_ai_percentage=0.0)
 
+    import logging
+    logger = logging.getLogger("detect-enhanced")
+    logger.info("Enhanced scan: %d sentences, %.1f%% AI", len(request.sentences), request.overall_ai_percentage)
     try:
         llm_result = enhanced_detect(request.sentences, request.overall_ai_percentage)
     except Exception as e:
+        logger.exception("LLM analysis failed")
         raise HTTPException(status_code=502, detail=f"LLM analysis failed: {e}")
 
     results = [
