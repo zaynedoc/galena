@@ -3,7 +3,7 @@ import torch
 
 MODEL_NAME = "andreas122001/roberta-academic-detector"
 
-# Load once at startup — not on every request
+# Load once at startup, not on every request
 _classifier = None
 
 
